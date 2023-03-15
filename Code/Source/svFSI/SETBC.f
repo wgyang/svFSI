@@ -195,9 +195,8 @@
       TYPE(faceType), INTENT(IN) :: lFa
       REAL(KIND=RKIND), INTENT(INOUT) :: lA(lDof,lFa%nNo),
      2   lY(lDof,lFa%nNo)
-
       INTEGER(KIND=IKIND) :: a, i
-      REAL(KIND=RKIND) :: dirY, dirA, nV(nsd)
+      REAL(KIND=RKIND) :: dirY, dirA, nV(nsd), noise(lDof)
 
       IF (BTEST(lBc%bType,bType_gen)) THEN
          IF (lDof .NE. lBc%gm%dof) err = "Inconsistent DOF"
@@ -214,6 +213,10 @@
             nV      = lFa%nV(:,a)
             lA(:,a) = dirA*lBc%gx(a)*nV
             lY(:,a) = dirY*lBc%gx(a)*nV
+            IF (BTEST(lBc%bType,bType_para)) THEN
+              CALL DRAW_NORMAL_DIST (0D0, 1D-1, noise)
+              lY(2:3,a) = lY(2:3,a) + noise(2:3)
+            END IF
          END DO
       ELSE
          DO a=1, lFa%nNo
@@ -226,6 +229,7 @@
 
       RETURN
       END SUBROUTINE SETBCDIRL
+
 !####################################################################
 !     Here for the outlets
       SUBROUTINE SETBCNEU(Yg, Dg)

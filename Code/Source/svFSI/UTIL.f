@@ -1098,5 +1098,31 @@
       RETURN
       END SUBROUTINE SWAPR
 !####################################################################
+      SUBROUTINE DRAW_NORMAL_DIST (mu, sigma, x)
+      IMPLICIT NONE
+      INTEGER(KIND=IKIND) i, dof
+      REAL (KIND=RKIND), INTENT(IN) :: mu, sigma
+      REAL (KIND=RKIND), DIMENSION(:), INTENT(INOUT) :: x
+      REAL(KIND=RKIND) U1, U2, Zc, Zs
+
+      REAL(KIND=RKIND), PARAMETER :: pi = 3.1415926535897932384626_RKIND
+!     minimum value for a double number that is not considered zero
+      REAL(KIND=RKIND), PARAMETER :: eps = EPSILON(eps)
+
+      dof = size(x)
+      DO i = 1,dof
+       DO WHILE ( 1D0 .GT. 0D0 )
+         CALL RANDOM_NUMBER(U1)
+         CALL RANDOM_NUMBER(U2)
+         IF ( U1 .GT. eps .AND. U2 .GT. eps ) EXIT
+       END DO
+       !Box-Muller Transformation
+       Zc = sqrt(-2D0 * log(U1)) * cos(2D0*pi*U2)
+       !Zs = sqrt(-2D0 * log(U1))* sin(2D0*pi*U2)
+
+       x(i) = mu + sigma*Zc
+      END DO
+
+      END SUBROUTINE DRAW_NORMAL_DIST
       END MODULE UTILMOD
 !####################################################################
