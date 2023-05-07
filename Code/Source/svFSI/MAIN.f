@@ -43,7 +43,10 @@
 
       LOGICAL l1, l2, l3
       INTEGER(KIND=IKIND) i, iM, iBc, ierr, iEqOld, stopTS
-      REAL(KIND=RKIND) timeP(3)
+      REAL(KIND=RKIND) timeP(3) 
+      INTEGER(KIND=IKIND) itr_start, itr_end, assem_start,
+     2 assem_end, ls_start, ls_end
+      INTEGER(KIND=IKIND) clock_rate
 
       INTEGER(KIND=IKIND), ALLOCATABLE :: incL(:)
       REAL(KIND=RKIND), ALLOCATABLE :: Ag(:,:), Yg(:,:), Dg(:,:), res(:)
@@ -82,6 +85,13 @@
       ALLOCATE(Ag(tDof,tnNo), Yg(tDof,tnNo), Dg(tDof,tnNo),
      2   res(nFacesLS), incL(nFacesLS))
 
+
+      IF (cm%mas()) THEN 
+        CALL system_clock(count_rate=clock_rate)
+        OPEN(123, file = 'subprocess_time.txt', status = 'REPLACE')  
+        WRITE(123,*) '#step-itr itr_t assem_t ls_t %assemble %ls \n'
+      END IF
+
 !--------------------------------------------------------------------
 !     Outer loop for marching in time. When entring this loop, all old
 !     variables are completely set and satisfy BCs.
@@ -114,6 +124,10 @@
 
 !     Inner loop for iteration
          DO
+            IF (cm%mas()) THEN
+               CALL system_clock (itr_start)
+            END IF 
+
             iEqOld = cEq
 
             IF (cplBC%coupled .AND. cEq.EQ.1) THEN
@@ -136,10 +150,19 @@
             CALL SETBF(Dg)
 
             dbg = "Assembling equation <"//eq(cEq)%sym//">"
+           
+            IF (cm%mas()) THEN
+               CALL system_clock (assem_start)
+            END IF 
+
             DO iM=1, nMsh
                CALL GLOBALEQASSEM(msh(iM), Ag, Yg, Dg)
                dbg = "Mesh "//iM//" is assembled"
             END DO
+
+            IF (cm%mas()) THEN
+               CALL system_clock (assem_end)
+            END IF 
 
 !        Treatment of boundary conditions on faces
 !        Apply Neumman or Traction boundary conditions
@@ -193,7 +216,15 @@
             END DO
 
             dbg = "Solving equation <"//eq(cEq)%sym//">"
+            IF (cm%mas()) THEN
+               CALL system_clock (ls_start)
+            END IF 
+            
             CALL LSSOLVE(eq(cEq), incL, res)
+
+            IF (cm%mas()) THEN
+               CALL system_clock (ls_end)
+            END IF 
 
 !        Solution is obtained, now updating (Corrector)
             CALL PICC
@@ -204,9 +235,23 @@
 !        Writing out the time passed, residual, and etc.
             IF (ALL(eq%ok)) EXIT
             CALL OUTRESULT(timeP, 2, iEqOld)
+
+         IF (cm%mas()) THEN
+         CALL system_clock (itr_end)
+         WRITE(123,'(I5,A1,I2,1X,F8.5,1X,F8.5,1X,'//
+     2    'F8.5,1X,F8.5,1X,F8.5)') 
+     2      cTS,"-", eq(iEqOld)%itr, 
+     2  real(itr_end-itr_start)/real(clock_rate), 
+     2  real(assem_end-assem_start)/real(clock_rate), 
+     2  real(ls_end-ls_start)/real(clock_rate), 
+     2  real(assem_end-assem_start)/real(itr_end-itr_start),
+     2  real(ls_end-ls_start)/real(itr_end-itr_start) 
+        flush(123)            
+         END IF   
+
          END DO
 !     End of inner loop
-
+      
 !     IB treatment: interpolate flow data on IB mesh from background
 !     fluid mesh for explicit coupling, update old solution for implicit
 !     coupling
@@ -278,6 +323,10 @@
          cplBC%xo = cplBC%xn
       END DO
 !     End of outer loop
+
+      IF (cm%mas()) THEN
+         CLOSE(123)
+      END IF
 
       IF (resetSim) THEN
          CALL REMESHRESTART(timeP)
