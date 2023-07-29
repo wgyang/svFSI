@@ -54,6 +54,19 @@
      2   bfl(:,:), lR(:,:), lK(:,:,:)
       REAL(KIND=RKIND), ALLOCATABLE :: xwl(:,:), xql(:,:), Nwx(:,:),
      2   Nwxx(:,:), Nqx(:,:)
+ 
+      INTEGER(KIND=IKIND) start_time, curr_time, 
+     2  compute_time, assemble_time
+      INTEGER(KIND=IKIND) clock_rate     
+
+      IF (cm%mas()) THEN
+         CALL system_clock(count_rate = clock_rate)
+         OPEN(123, file = 'assemble_time.txt', status = 'UNKNOWN')
+      ENDIF
+      start_time = 0D0
+      curr_time = 0D0
+      compute_time = 0D0
+      assemble_time = 0D0  
 
       eNoN = lM%eNoN
 
@@ -72,6 +85,11 @@
 
 !     Loop over all elements of mesh
       DO e=1, lM%nEl
+ 
+         IF (cm%mas()) THEN
+            CALL system_clock (start_time)
+         END IF
+        
 !        Update domain and proceed if domain phys and eqn phys match
          cDmn  = DOMAIN(lM, cEq, e)
          cPhys = eq(cEq)%dmn(cDmn)%phys
@@ -169,6 +187,12 @@
 
          DEALLOCATE(xwl, xql, Nwx, Nwxx, Nqx)
 
+         IF (cm%mas()) THEN 
+            CALL system_clock (curr_time)
+            compute_time = compute_time + curr_time - start_time
+         END IF
+
+
 !        Assembly
 #ifdef WITH_TRILINOS
          IF (eq(cEq)%assmTLS) THEN
@@ -179,7 +203,20 @@
 #ifdef WITH_TRILINOS
          END IF
 #endif
+
+         IF (cm%mas()) THEN
+            CALL system_clock(curr_time)
+            assemble_time = assemble_time + curr_time - start_time
+         END IF
+
       END DO ! e: loop
+
+      IF (cm%mas()) THEN
+         WRITE(123, '(F8.5,1X,F8.5,1X)') real(compute_time) 
+     2  / real(lM%nEl) / real(clock_rate),
+     2    real(assemble_time) / real(lM%nEl) / real(clock_rate)
+         CLOSE(123)
+      END IF
 
       DEALLOCATE(ptr, xl, al, yl, bfl, lR, lK)
 
