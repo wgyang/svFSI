@@ -61,7 +61,8 @@
 
       IF (cm%mas()) THEN
          CALL system_clock(count_rate = clock_rate)
-         OPEN(123, file = 'assemble_time.txt', status = 'UNKNOWN')
+         OPEN(124, file = 'svfsi_assemble_time.txt', 
+     2 status = 'UNKNOWN', position ='APPEND')
       ENDIF
       start_time = 0D0
       curr_time = 0D0
@@ -212,10 +213,10 @@
       END DO ! e: loop
 
       IF (cm%mas()) THEN
-         WRITE(123, '(F8.5,1X,F8.5,1X)') real(compute_time) 
-     2  / real(lM%nEl) / real(clock_rate),
-     2    real(assemble_time) / real(lM%nEl) / real(clock_rate)
-         CLOSE(123)
+         WRITE(124, '(F8.5,1X,F8.5,1X)') real(compute_time) 
+     2  / real(clock_rate),
+     2    real(assemble_time) / real(clock_rate)
+         flush(124)
       END IF
 
       DEALLOCATE(ptr, xl, al, yl, bfl, lR, lK)

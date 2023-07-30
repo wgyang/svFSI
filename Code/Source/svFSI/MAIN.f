@@ -88,8 +88,10 @@
 
       IF (cm%mas()) THEN 
         CALL system_clock(count_rate=clock_rate)
-        OPEN(123, file = 'subprocess_time.txt', status = 'REPLACE')  
+        OPEN(123, file = 'svfsi_subprocess_time.txt', 
+     2  status = 'REPLACE')  
         WRITE(123,*) '#step-itr itr_t assem_t ls_t %assemble %ls \n'
+c       flush(123)
       END IF
 
 !--------------------------------------------------------------------
